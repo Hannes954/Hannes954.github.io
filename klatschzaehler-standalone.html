@@ -111,8 +111,8 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
       <div class="meter" aria-hidden="true"><div class="fill" id="fill"></div><div class="thr" id="thr"></div></div>
     </div>
     <div class="sens">
-      <label for="sens"><span>Empfindlichkeit</span><output id="sensOut" for="sens">6</output></label>
-      <input type="range" id="sens" min="1" max="10" step="1" value="6">
+      <label for="sens"><span>Empfindlichkeit</span><output id="sensOut" for="sens">8</output></label>
+      <input type="range" id="sens" min="1" max="10" step="1" value="8">
     </div>
   </section>
 
@@ -145,7 +145,7 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
   // Schwelle: Spitzenpegel 0..1. Empfindlichkeit 1 = laut nötig, 10 = leise reicht.
   function threshold() {
     var s = Number(sens.value);
-    return 0.62 - (s - 1) * (0.62 - 0.07) / 9;
+    return 0.5 - (s - 1) * (0.5 - 0.012) / 9;
   }
   function disp(v) { return Math.min(1, Math.sqrt(v)); }
   function drawThreshold() { thrEl.style.left = 'calc(' + (disp(threshold()) * 100) + '% - 1px)'; }
@@ -166,7 +166,7 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
     var now = performance.now();
     var thr = threshold();
     var rising = prev < thr;
-    if (peak > thr && rising && peak > baseline * 2.5 && now - lastHit > 220) {
+    if (peak > thr && rising && peak > baseline * 1.8 && now - lastHit > 220) {
       lastHit = now;
       flashUntil = now + 140;
       setCount(count + 1);
