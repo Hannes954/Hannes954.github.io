@@ -111,8 +111,8 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
       <div class="meter" aria-hidden="true"><div class="fill" id="fill"></div><div class="thr" id="thr"></div></div>
     </div>
     <div class="sens">
-      <label for="sens"><span>Empfindlichkeit</span><output id="sensOut" for="sens">8</output></label>
-      <input type="range" id="sens" min="1" max="10" step="1" value="8">
+      <label for="sens"><span>Empfindlichkeit</span><output id="sensOut" for="sens">9</output></label>
+      <input type="range" id="sens" min="1" max="10" step="1" value="9">
     </div>
   </section>
 
@@ -145,9 +145,9 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
   // Schwelle: Spitzenpegel 0..1. Empfindlichkeit 1 = laut nötig, 10 = leise reicht.
   function threshold() {
     var s = Number(sens.value);
-    return 0.5 - (s - 1) * (0.5 - 0.012) / 9;
+    return 0.5 - (s - 1) * (0.5 - 0.02) / 9;
   }
-  function disp(v) { return Math.min(1, Math.sqrt(v)); }
+  function disp(v) { return Math.min(1, Math.sqrt(v) * 1.4); }
   function drawThreshold() { thrEl.style.left = 'calc(' + (disp(threshold()) * 100) + '% - 1px)'; }
   sens.addEventListener('input', function () { sensOut.textContent = sens.value; drawThreshold(); });
   drawThreshold();
@@ -165,13 +165,13 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
     for (var i = 0; i < buf.length; i++) { var a = Math.abs(buf[i]); if (a > peak) peak = a; }
     var now = performance.now();
     var thr = threshold();
-    var rising = prev < thr;
+    var rising = peak > prev * 1.4;
     if (peak > thr && rising && peak > baseline * 1.8 && now - lastHit > 220) {
       lastHit = now;
       flashUntil = now + 140;
       setCount(count + 1);
     }
-    baseline += (peak - baseline) * 0.02;
+    baseline += (peak - baseline) * 0.04;
     prev = peak;
     fill.style.transform = 'scaleX(' + disp(peak) + ')';
     fill.classList.toggle('hit', now < flashUntil);
@@ -195,7 +195,7 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
     }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true }
       });
       var AC = window.AudioContext || window.webkitAudioContext;
       ctx = new AC();
@@ -203,7 +203,7 @@ button.btn.primary { background: var(--accent); color: var(--accent-fg); border-
       var src = ctx.createMediaStreamSource(stream);
       analyser = ctx.createAnalyser();
       analyser.fftSize = 1024;
-      src.connect(analyser);
+      var gain = ctx.createGain(); gain.gain.value = 4; src.connect(gain); gain.connect(analyser);
       buf = new Float32Array(analyser.fftSize);
       baseline = 0; prev = 0;
       listening = true;
