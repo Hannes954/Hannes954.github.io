@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Klatschzähler</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: eine Spalte. Die Zahl füllt die Mitte, darunter der Pegel mit Schwelle, unten die Bedienung. */
+:root {
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --fg: #14171c;
+  --muted: #5b6471;
+  --line: #cdd4dd;
+  --accent: #2b50ff;
+  --accent-fg: #ffffff;
+  --hit: #e8590c;
+  --font-display: 'Bricolage Grotesque', 'Arial Black', system-ui, sans-serif;
+  --font-body: 'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1218; --surface: #171d26; --fg: #e9ecf1; --muted: #98a2b0;
+    --line: #2b3441; --accent: #7e95ff; --accent-fg: #0e1218; --hit: #ff8a4c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1218; --surface: #171d26; --fg: #e9ecf1; --muted: #98a2b0;
+  --line: #2b3441; --accent: #7e95ff; --accent-fg: #0e1218; --hit: #ff8a4c;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px;
+}
+.app {
+  min-height: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+h1 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+.state { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+.state.on .dot { background: var(--hit); }
+
+.stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 0; }
+.count {
+  appearance: none; border: 0; background: none; color: var(--fg); cursor: pointer;
+  font-family: var(--font-display); font-weight: 800; line-height: 0.9;
+  font-size: clamp(6rem, 40vw, 13rem);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.04em;
+  padding: 0.05em 0.15em;
+  border-radius: 24px;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.count:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.count.bump { animation: bump 220ms ease-out; }
+@keyframes bump { 0% { transform: scale(1); color: var(--fg); } 35% { transform: scale(1.08); color: var(--hit); } 100% { transform: scale(1); color: var(--fg); } }
+.unit { font-family: var(--font-mono); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+.meter-head { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.meter { position: relative; height: 18px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; }
+.fill { position: absolute; inset: 0; background: var(--accent); transform-origin: left; transform: scaleX(0); }
+.fill.hit { background: var(--hit); }
+.thr { position: absolute; top: -2px; bottom: -2px; width: 3px; background: var(--fg); left: 50%; }
+.sens { display: flex; flex-direction: column; gap: 8px; }
+.sens label { display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: 500; }
+.sens output { font-family: var(--font-mono); color: var(--muted); }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+
+.actions { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+button.btn { appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg); font: inherit; font-weight: 700; padding: 14px 16px; border-radius: 12px; cursor: pointer; }
+button.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.note { margin: 0; font-size: 0.85rem; line-height: 1.45; color: var(--muted); min-height: 2.5em; }
+@media (prefers-reduced-motion: reduce) { .count.bump { animation: none; } }
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Klatschzähler</h1>
+    <div class="state" id="state"><span class="dot"></span><span id="stateText">Aus</span></div>
+  </header>
+
+  <main class="stage">
+    <button class="count" id="count" type="button" aria-label="Klatscher zählen, Taste: Leertaste">0</button>
+    <div class="unit">Klatscher</div>
+  </main>
+
+  <section class="panel" aria-label="Pegel und Empfindlichkeit">
+    <div>
+      <div class="meter-head"><span>Pegel</span><span>Schwelle</span></div>
+      <div class="meter" aria-hidden="true"><div class="fill" id="fill"></div><div class="thr" id="thr"></div></div>
+    </div>
+    <div class="sens">
+      <label for="sens"><span>Empfindlichkeit</span><output id="sensOut" for="sens">6</output></label>
+      <input type="range" id="sens" min="1" max="10" step="1" value="6">
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="btn primary" id="toggle" type="button">Mikrofon starten</button>
+    <button class="btn" id="reset" type="button">Null</button>
+  </div>
+  <p class="note" id="note" aria-live="polite">Starte das Mikrofon und klatsche. Du kannst auch auf die Zahl tippen oder die Leertaste drücken.</p>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var countEl = $('count'), fill = $('fill'), thrEl = $('thr'), noteEl = $('note');
+  var stateEl = $('state'), stateText = $('stateText'), toggle = $('toggle');
+  var sens = $('sens'), sensOut = $('sensOut');
+
+  var count = 0, listening = false;
+  var stream = null, ctx = null, analyser = null, buf = null, raf = 0;
+  var baseline = 0, prev = 0, lastHit = 0, flashUntil = 0;
+
+  function setCount(n) {
+    count = n;
+    countEl.textContent = String(n);
+    countEl.classList.remove('bump');
+    void countEl.offsetWidth;
+    countEl.classList.add('bump');
+  }
+
+  // Schwelle: Spitzenpegel 0..1. Empfindlichkeit 1 = laut nötig, 10 = leise reicht.
+  function threshold() {
+    var s = Number(sens.value);
+    return 0.62 - (s - 1) * (0.62 - 0.07) / 9;
+  }
+  function disp(v) { return Math.min(1, Math.sqrt(v)); }
+  function drawThreshold() { thrEl.style.left = 'calc(' + (disp(threshold()) * 100) + '% - 1px)'; }
+  sens.addEventListener('input', function () { sensOut.textContent = sens.value; drawThreshold(); });
+  drawThreshold();
+
+  function setState(on, text) {
+    stateEl.classList.toggle('on', on);
+    stateText.textContent = text;
+  }
+
+  function loop() {
+    if (!listening) return;
+    raf = requestAnimationFrame(loop);
+    analyser.getFloatTimeDomainData(buf);
+    var peak = 0;
+    for (var i = 0; i < buf.length; i++) { var a = Math.abs(buf[i]); if (a > peak) peak = a; }
+    var now = performance.now();
+    var thr = threshold();
+    var rising = prev < thr;
+    if (peak > thr && rising && peak > baseline * 2.5 && now - lastHit > 220) {
+      lastHit = now;
+      flashUntil = now + 140;
+      setCount(count + 1);
+    }
+    baseline += (peak - baseline) * 0.02;
+    prev = peak;
+    fill.style.transform = 'scaleX(' + disp(peak) + ')';
+    fill.classList.toggle('hit', now < flashUntil);
+  }
+
+  function stop() {
+    listening = false;
+    cancelAnimationFrame(raf);
+    if (stream) stream.getTracks().forEach(function (t) { t.stop(); });
+    if (ctx) { try { ctx.close(); } catch (e) {} }
+    stream = ctx = analyser = null;
+    fill.style.transform = 'scaleX(0)';
+    toggle.textContent = 'Mikrofon starten';
+    setState(false, 'Aus');
+  }
+
+  async function start() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      noteEl.textContent = 'Dieses Gerät oder diese Ansicht bietet kein Mikrofon. Tippe auf die Zahl, um von Hand zu zählen.';
+      return;
+    }
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+      });
+      var AC = window.AudioContext || window.webkitAudioContext;
+      ctx = new AC();
+      await ctx.resume();
+      var src = ctx.createMediaStreamSource(stream);
+      analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      src.connect(analyser);
+      buf = new Float32Array(analyser.fftSize);
+      baseline = 0; prev = 0;
+      listening = true;
+      toggle.textContent = 'Stoppen';
+      setState(true, 'Hört zu');
+      noteEl.textContent = 'Klatsche in die Hände. Zählt zu viel oder zu wenig, verschiebe die Empfindlichkeit.';
+      loop();
+    } catch (e) {
+      stop();
+      noteEl.textContent = (e && e.name === 'NotAllowedError')
+        ? 'Der Mikrofonzugriff ist blockiert. In dieser Ansicht lässt er sich eventuell nicht freigeben. Tippe auf die Zahl oder drücke die Leertaste, um von Hand zu zählen.'
+        : 'Kein Mikrofon gefunden. Tippe auf die Zahl, um von Hand zu zählen.';
+    }
+  }
+
+  toggle.addEventListener('click', function () { if (listening) { stop(); noteEl.textContent = 'Mikrofon aus.'; } else { start(); } });
+  $('reset').addEventListener('click', function () { count = 0; countEl.textContent = '0'; });
+  countEl.addEventListener('click', function () { setCount(count + 1); });
+  document.addEventListener('keydown', function (e) {
+    if (e.code === 'Space' && e.target === document.body) { e.preventDefault(); setCount(count + 1); }
+  });
+})();
+</script>
+</body>
+</html>
